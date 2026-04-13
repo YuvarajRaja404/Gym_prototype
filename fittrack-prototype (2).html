@@ -1,0 +1,802 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>FitTrack — Gym Management</title>
+<style>
+  *{box-sizing:border-box;margin:0;padding:0}
+  :root{
+    --bg:#f8f7f4;--surface:#ffffff;--border:#e5e3dc;--border2:#d0cec6;
+    --text:#1a1a18;--text2:#6b6963;--text3:#a8a49e;
+    --purple:#7F77DD;--purple-light:#EEEDFE;--purple-mid:#CECBF6;--purple-dark:#3C3489;
+    --teal:#1D9E75;--teal-light:#E1F5EE;--teal-mid:#9FE1CB;
+    --amber:#BA7517;--amber-light:#FAEEDA;--amber-mid:#FAC775;
+    --red:#E24B4A;--red-light:#FCEBEB;--red-mid:#F7C1C1;
+    --gray-light:#F1EFE8;--gray-mid:#D3D1C7;
+    --green:#3B6D11;--green-light:#EAF3DE;--green-mid:#C0DD97;
+    --radius:8px;--radius-lg:12px;
+  }
+  body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:var(--bg);color:var(--text);height:100vh;display:flex;overflow:hidden;font-size:14px}
+  /* SIDEBAR */
+  .sidebar{width:210px;background:var(--surface);border-right:1px solid var(--border);display:flex;flex-direction:column;flex-shrink:0;height:100vh}
+  .brand{padding:20px 18px 16px;border-bottom:1px solid var(--border)}
+  .brand-logo{display:flex;align-items:center;gap:8px}
+  .brand-icon{width:30px;height:30px;border-radius:8px;background:var(--purple);display:flex;align-items:center;justify-content:center}
+  .brand-icon svg{width:16px;height:16px}
+  .brand-name{font-size:15px;font-weight:600;color:var(--text)}
+  .brand-sub{font-size:11px;color:var(--text3);margin-top:2px}
+  .nav-section{padding:14px 18px 4px;font-size:10px;letter-spacing:.1em;color:var(--text3);text-transform:uppercase}
+  .nav-item{display:flex;align-items:center;gap:10px;padding:9px 12px;cursor:pointer;border-radius:var(--radius);margin:1px 6px;font-size:13px;color:var(--text2);transition:all .15s;user-select:none}
+  .nav-item:hover{background:var(--bg);color:var(--text)}
+  .nav-item.active{background:var(--purple-light);color:var(--purple-dark);font-weight:500}
+  .nav-item svg{width:16px;height:16px;flex-shrink:0;opacity:.7}
+  .nav-item.active svg{opacity:1}
+  .sidebar-footer{margin-top:auto;padding:14px 18px;border-top:1px solid var(--border)}
+  .gym-label{font-size:11px;color:var(--text3);margin-bottom:4px}
+  .gym-name{font-size:13px;font-weight:500;color:var(--text)}
+  /* BOTTOM NAV (mobile only) */
+  .bottom-nav{display:none;position:fixed;bottom:0;left:0;right:0;height:60px;background:var(--surface);border-top:1px solid var(--border);z-index:50;align-items:stretch}
+  .bn-item{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;cursor:pointer;color:var(--text3);font-size:10px;transition:color .15s;padding:6px 0;border:none;background:transparent}
+  .bn-item svg{width:20px;height:20px;flex-shrink:0}
+  .bn-item.active{color:var(--purple)}
+  .bn-item span{font-size:9px;font-weight:500}
+  /* MAIN */
+  .main{flex:1;display:flex;flex-direction:column;height:100vh;overflow:hidden}
+  .topbar{padding:0 24px;height:56px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;background:var(--surface);flex-shrink:0}
+  .page-title{font-size:16px;font-weight:600;color:var(--text)}
+  .topbar-right{display:flex;align-items:center;gap:12px}
+  .topbar-date{font-size:12px;color:var(--text3)}
+  .notif-btn{width:32px;height:32px;border-radius:var(--radius);border:1px solid var(--border);display:flex;align-items:center;justify-content:center;cursor:pointer;position:relative;background:var(--surface)}
+  .notif-btn:hover{background:var(--bg)}
+  .notif-dot{position:absolute;top:6px;right:6px;width:7px;height:7px;border-radius:50%;background:var(--red);border:1.5px solid var(--surface)}
+  .avatar{width:32px;height:32px;border-radius:50%;background:var(--purple-mid);display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:600;color:var(--purple-dark);cursor:pointer}
+  .content{flex:1;overflow-y:auto;padding:24px}
+  /* SCREENS */
+  .screen{display:none}.screen.active{display:block}
+  /* CARDS */
+  .card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-lg);padding:16px 18px;margin-bottom:14px}
+  .card-title{font-size:11px;font-weight:600;color:var(--text2);margin-bottom:14px;text-transform:uppercase;letter-spacing:.07em}
+  /* STATS */
+  .stats-grid{display:grid;gap:12px;margin-bottom:16px}
+  .stats-4{grid-template-columns:repeat(4,1fr)}
+  .stats-3{grid-template-columns:repeat(3,1fr)}
+  .stat-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-lg);padding:14px 16px}
+  .stat-label{font-size:11px;color:var(--text2);margin-bottom:8px}
+  .stat-value{font-size:24px;font-weight:600;color:var(--text);line-height:1}
+  .stat-change{font-size:11px;margin-top:6px}
+  .up{color:var(--teal)}.down{color:var(--red)}
+  /* BADGES */
+  .badge{display:inline-flex;align-items:center;font-size:11px;padding:3px 9px;border-radius:20px;font-weight:500}
+  .badge-active{background:var(--green-light);color:var(--green)}
+  .badge-expiring{background:var(--amber-light);color:var(--amber)}
+  .badge-expired{background:var(--red-light);color:#A32D2D}
+  .badge-paid{background:var(--teal-light);color:#0F6E56}
+  .badge-due{background:var(--red-light);color:#A32D2D}
+  .badge-pending{background:var(--amber-light);color:var(--amber)}
+  .badge-trainer{background:var(--purple-light);color:var(--purple-dark)}
+  /* AVATAR */
+  .av{display:flex;align-items:center;justify-content:center;border-radius:50%;font-weight:600;flex-shrink:0}
+  .av-sm{width:30px;height:30px;font-size:11px}
+  .av-md{width:38px;height:38px;font-size:13px}
+  .av-lg{width:52px;height:52px;font-size:16px}
+  /* TABLE */
+  table{width:100%;border-collapse:collapse}
+  th{text-align:left;font-size:11px;font-weight:600;color:var(--text2);padding:8px 12px;border-bottom:1px solid var(--border);text-transform:uppercase;letter-spacing:.07em}
+  td{padding:10px 12px;border-bottom:1px solid var(--border);color:var(--text);font-size:13px}
+  tr:last-child td{border-bottom:none}
+  tbody tr:hover td{background:var(--bg)}
+  /* BUTTONS */
+  .btn{padding:8px 16px;border-radius:var(--radius);font-size:13px;cursor:pointer;font-weight:500;border:1px solid var(--border2);background:var(--surface);color:var(--text);transition:all .15s}
+  .btn:hover{background:var(--bg)}
+  .btn-primary{background:var(--purple);color:#fff;border-color:var(--purple)}
+  .btn-primary:hover{background:#6b63cc}
+  .btn-sm{padding:5px 11px;font-size:12px}
+  .btn-ghost{border:1px solid var(--border);background:transparent;color:var(--text2)}
+  .btn-ghost:hover{background:var(--bg);color:var(--text)}
+  /* FORM */
+  .form-group{margin-bottom:16px}
+  .form-label{font-size:12px;font-weight:500;color:var(--text2);margin-bottom:6px;display:block}
+  .form-input{width:100%;padding:9px 12px;border:1px solid var(--border);border-radius:var(--radius);font-size:16px;background:var(--surface);color:var(--text);outline:none;transition:border .15s}
+  .form-input:focus{border-color:var(--purple)}
+  .form-select{width:100%;padding:9px 12px;border:1px solid var(--border);border-radius:var(--radius);font-size:16px;background:var(--surface);color:var(--text);outline:none;appearance:none;cursor:pointer}
+  .form-select:focus{border-color:var(--purple)}
+  .form-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+  /* ROWS */
+  .list-row{display:flex;align-items:center;gap:12px;padding:10px 0;border-bottom:1px solid var(--border)}
+  .list-row:last-child{border-bottom:none}
+  /* SEARCH */
+  .toolbar{display:flex;gap:10px;margin-bottom:14px;align-items:center}
+  .search-input{flex:1;padding:8px 12px;border:1px solid var(--border);border-radius:var(--radius);font-size:16px;background:var(--surface);color:var(--text);outline:none}
+  .search-input:focus{border-color:var(--purple)}
+  /* CHART */
+  .bar-chart{display:flex;align-items:flex-end;gap:8px;height:100px;margin-top:8px}
+  .bar-col{flex:1;display:flex;flex-direction:column;align-items:center;gap:4px}
+  .bar-fill{width:100%;border-radius:4px 4px 0 0;background:var(--purple-mid);transition:background .2s;cursor:pointer}
+  .bar-fill:hover,.bar-fill.current{background:var(--purple)}
+  .bar-month{font-size:10px;color:var(--text3)}
+  .bar-amt{font-size:10px;color:var(--text2);font-weight:500}
+  /* ATTENDANCE GRID */
+  .att-week{display:grid;grid-template-columns:repeat(7,1fr);gap:6px;margin-bottom:18px}
+  .att-cell-wrap{text-align:center}
+  .att-day-lbl{font-size:10px;color:var(--text3);margin-bottom:5px}
+  .att-cell{height:36px;border-radius:6px;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:600}
+  .att-high{background:var(--green-mid);color:var(--green)}
+  .att-mid{background:var(--amber-light);color:var(--amber)}
+  .att-low{background:var(--gray-light);color:var(--text3)}
+  .att-today{outline:2px solid var(--purple);outline-offset:1px}
+  /* PROFILE BREADCRUMB */
+  .breadcrumb{display:flex;align-items:center;gap:6px;font-size:12px;color:var(--text3);margin-bottom:16px;cursor:pointer}
+  .breadcrumb span{color:var(--text2)}
+  .breadcrumb:hover span{color:var(--purple)}
+  /* TRAINER CARD */
+  .trainer-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-lg);padding:16px;display:flex;flex-direction:column;gap:10px}
+  .trainer-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:14px}
+  /* MODAL OVERLAY */
+  .modal-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.35);z-index:100;align-items:center;justify-content:center}
+  .modal-overlay.open{display:flex}
+  .modal{background:var(--surface);border-radius:var(--radius-lg);padding:24px;width:520px;max-height:85vh;overflow-y:auto;border:1px solid var(--border)}
+  /* MOBILE CARD TABLE — member cards on small screens */
+  .member-card-list{display:none}
+  .member-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-lg);padding:14px;margin-bottom:10px;cursor:pointer;transition:background .15s;-webkit-tap-highlight-color:transparent}
+  .member-card:active{background:var(--bg)}
+  /* RESPONSIVE */
+  @media(max-width:700px){
+    body{flex-direction:column;height:100dvh}
+    .sidebar{display:none}
+    .bottom-nav{display:flex}
+    .main{height:calc(100dvh - 60px);flex:none;width:100%}
+    .topbar{padding:0 16px;height:52px}
+    .topbar-date{display:none}
+    .content{padding:14px 14px 20px}
+    .stats-4{grid-template-columns:repeat(2,1fr);gap:8px}
+    .stats-3{grid-template-columns:repeat(2,1fr);gap:8px}
+    .stat-value{font-size:20px}
+    .two-col{grid-template-columns:1fr}
+    .trainer-grid{grid-template-columns:repeat(2,1fr)}
+    .form-grid{grid-template-columns:1fr}
+    .modal{width:calc(100vw - 24px);max-height:92dvh;padding:18px;border-radius:16px 16px 0 0;position:fixed;bottom:0;left:0;right:0;width:100%;margin:0}
+    .modal-overlay.open{align-items:flex-end}
+    .table-desktop{display:none}
+    .member-card-list{display:block}
+    .billing-table-desktop{display:none}
+    .billing-card-list{display:block}
+    .trainer-schedule-wrap{overflow-x:auto;-webkit-overflow-scrolling:touch}
+    .profile-stats{grid-template-columns:repeat(3,1fr)}
+    .att-day-lbl{font-size:9px}
+    .att-cell{height:30px;font-size:11px}
+    .bar-chart{gap:4px}
+    .bar-amt{font-size:9px}
+    .bar-month{font-size:9px}
+    .two-col .card:last-child{margin-bottom:0}
+  }
+  @media(max-width:400px){
+    .trainer-grid{grid-template-columns:1fr}
+    .profile-stats{grid-template-columns:repeat(3,1fr)}
+    .stat-value{font-size:18px}
+  }
+  .modal-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:20px}
+  .modal-title{font-size:16px;font-weight:600;color:var(--text)}
+  .modal-close{width:28px;height:28px;border-radius:6px;border:1px solid var(--border);background:transparent;cursor:pointer;display:flex;align-items:center;justify-content:center;color:var(--text2);font-size:16px}
+  .modal-close:hover{background:var(--bg)}
+  /* TOOLTIP SUCCESS */
+  .toast{position:fixed;bottom:24px;right:24px;background:var(--text);color:#fff;padding:10px 16px;border-radius:var(--radius);font-size:13px;z-index:200;opacity:0;transform:translateY(8px);transition:all .3s;pointer-events:none}
+  .toast.show{opacity:1;transform:translateY(0)}
+  /* TWO COL */
+  .two-col{display:grid;grid-template-columns:1.5fr 1fr;gap:14px}
+  /* PLAN PILLS */
+  .plan-pill{display:inline-block;font-size:11px;padding:2px 8px;border-radius:20px;background:var(--purple-light);color:var(--purple-dark);font-weight:500}
+  /* PROFILE */
+  .profile-header{display:flex;align-items:center;gap:18px;margin-bottom:20px}
+  .profile-info h2{font-size:18px;font-weight:600;color:var(--text)}
+  .profile-info p{font-size:13px;color:var(--text2);margin-top:2px}
+  .profile-stats{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:16px}
+  .profile-stat{background:var(--bg);border-radius:var(--radius);padding:12px 14px;text-align:center}
+  .profile-stat-val{font-size:18px;font-weight:600;color:var(--text)}
+  .profile-stat-label{font-size:11px;color:var(--text2);margin-top:3px}
+  .timeline{margin-top:4px}
+  .timeline-item{display:flex;gap:12px;padding:8px 0;border-bottom:1px solid var(--border)}
+  .timeline-item:last-child{border-bottom:none}
+  .timeline-dot{width:8px;height:8px;border-radius:50%;background:var(--purple);margin-top:4px;flex-shrink:0}
+  .timeline-label{font-size:13px;color:var(--text)}
+  .timeline-date{font-size:11px;color:var(--text3);margin-top:2px}
+</style>
+</head>
+<body>
+
+<!-- SIDEBAR -->
+<div class="sidebar">
+  <div class="brand">
+    <div class="brand-logo">
+      <div class="brand-icon">
+        <svg viewBox="0 0 16 16" fill="none"><path d="M2 8h2M12 8h2M4 8a4 4 0 008 0M4 8a4 4 0 018 0M6 5v1M10 5v1" stroke="white" stroke-width="1.5" stroke-linecap="round"/></svg>
+      </div>
+      <div>
+        <div class="brand-name">FitTrack</div>
+        <div class="brand-sub">Gym Management</div>
+      </div>
+    </div>
+  </div>
+
+  <div style="padding:8px 0;flex:1">
+    <div class="nav-section">Main</div>
+    <div class="nav-item active" onclick="go('dashboard',this,'Dashboard')">
+      <svg viewBox="0 0 16 16" fill="none"><rect x="1" y="1" width="6" height="6" rx="1" fill="currentColor" opacity=".9"/><rect x="9" y="1" width="6" height="6" rx="1" fill="currentColor" opacity=".5"/><rect x="1" y="9" width="6" height="6" rx="1" fill="currentColor" opacity=".5"/><rect x="9" y="9" width="6" height="6" rx="1" fill="currentColor" opacity=".5"/></svg>
+      Dashboard
+    </div>
+    <div class="nav-item" onclick="go('members',this,'Members')">
+      <svg viewBox="0 0 16 16" fill="none"><circle cx="6" cy="5" r="3" fill="currentColor" opacity=".8"/><path d="M1 14c0-3 2-5 5-5s5 2 5 5" stroke="currentColor" stroke-width="1.3" fill="none"/><circle cx="12" cy="5" r="2" fill="currentColor" opacity=".4"/><path d="M12 10c1.5.3 3 1.5 3 4" stroke="currentColor" stroke-width="1.3" fill="none" opacity=".4"/></svg>
+      Members
+    </div>
+    <div class="nav-item" onclick="go('trainers',this,'Trainers')">
+      <svg viewBox="0 0 16 16" fill="none"><circle cx="8" cy="5" r="3" fill="currentColor" opacity=".8"/><path d="M2 14c0-3 2.7-5 6-5s6 2 6 5" stroke="currentColor" stroke-width="1.3" fill="none"/><path d="M11 2l1 1.5-1 1.5" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/></svg>
+      Trainers
+    </div>
+    <div class="nav-item" onclick="go('billing',this,'Billing')">
+      <svg viewBox="0 0 16 16" fill="none"><rect x="1" y="3" width="14" height="10" rx="1.5" stroke="currentColor" stroke-width="1.3"/><path d="M1 6.5h14" stroke="currentColor" stroke-width="1.2"/><rect x="3" y="9.5" width="3" height="1.5" rx=".5" fill="currentColor" opacity=".6"/></svg>
+      Billing
+    </div>
+    <div class="nav-item" onclick="go('attendance',this,'Attendance')">
+      <svg viewBox="0 0 16 16" fill="none"><rect x="2" y="2" width="12" height="12" rx="1.5" stroke="currentColor" stroke-width="1.3"/><path d="M5 8l2.5 2.5L11 5.5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
+      Attendance
+    </div>
+  </div>
+
+  <div class="sidebar-footer">
+    <div class="gym-label">Active Gym</div>
+    <div class="gym-name">Iron Zone Gym</div>
+    <div style="font-size:11px;color:var(--text3);margin-top:2px">Anna Nagar, Chennai</div>
+  </div>
+</div>
+
+<!-- BOTTOM NAV (mobile) -->
+<nav class="bottom-nav" id="bottom-nav">
+  <button class="bn-item active" onclick="goMobile('dashboard',this,'Dashboard')">
+    <svg viewBox="0 0 20 20" fill="none"><rect x="2" y="2" width="7" height="7" rx="1.5" fill="currentColor" opacity=".9"/><rect x="11" y="2" width="7" height="7" rx="1.5" fill="currentColor" opacity=".4"/><rect x="2" y="11" width="7" height="7" rx="1.5" fill="currentColor" opacity=".4"/><rect x="11" y="11" width="7" height="7" rx="1.5" fill="currentColor" opacity=".4"/></svg>
+    <span>Home</span>
+  </button>
+  <button class="bn-item" onclick="goMobile('members',this,'Members')">
+    <svg viewBox="0 0 20 20" fill="none"><circle cx="7" cy="6" r="3.5" fill="currentColor" opacity=".8"/><path d="M1 17c0-3.5 2.5-6 6-6s6 2.5 6 6" stroke="currentColor" stroke-width="1.5" fill="none"/><circle cx="15" cy="6" r="2.5" fill="currentColor" opacity=".4"/><path d="M15 12c2 .4 4 2 4 5" stroke="currentColor" stroke-width="1.5" fill="none" opacity=".4"/></svg>
+    <span>Members</span>
+  </button>
+  <button class="bn-item" onclick="goMobile('trainers',this,'Trainers')">
+    <svg viewBox="0 0 20 20" fill="none"><circle cx="10" cy="6" r="3.5" fill="currentColor" opacity=".8"/><path d="M3 17c0-3.5 3-6 7-6s7 2.5 7 6" stroke="currentColor" stroke-width="1.5" fill="none"/><path d="M14 3l1.5 2L14 7" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
+    <span>Trainers</span>
+  </button>
+  <button class="bn-item" onclick="goMobile('billing',this,'Billing')">
+    <svg viewBox="0 0 20 20" fill="none"><rect x="2" y="4" width="16" height="12" rx="2" stroke="currentColor" stroke-width="1.5"/><path d="M2 8h16" stroke="currentColor" stroke-width="1.3"/><rect x="4" y="11" width="4" height="2" rx=".7" fill="currentColor" opacity=".6"/></svg>
+    <span>Billing</span>
+  </button>
+  <button class="bn-item" onclick="goMobile('attendance',this,'Attendance')">
+    <svg viewBox="0 0 20 20" fill="none"><rect x="2" y="2" width="16" height="16" rx="2" stroke="currentColor" stroke-width="1.5"/><path d="M6 10l3 3 5-5" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+    <span>Attend.</span>
+  </button>
+</nav>
+
+<!-- MAIN -->
+<div class="main">
+  <div class="topbar">
+    <div class="page-title" id="page-title">Dashboard</div>
+    <div class="topbar-right">
+      <div class="topbar-date">Monday, Apr 13, 2026</div>
+      <div class="notif-btn" title="Notifications">
+        <svg width="15" height="15" viewBox="0 0 16 16" fill="none"><path d="M8 1a5 5 0 00-5 5v3l-1.5 2h13L13 9V6a5 5 0 00-5-5z" stroke="#6b6963" stroke-width="1.3"/><path d="M6.5 13a1.5 1.5 0 003 0" stroke="#6b6963" stroke-width="1.3"/></svg>
+        <div class="notif-dot"></div>
+      </div>
+      <div class="avatar">RK</div>
+    </div>
+  </div>
+
+  <div class="content">
+
+    <!-- ========== DASHBOARD ========== -->
+    <div class="screen active" id="screen-dashboard">
+      <div class="stats-grid stats-4">
+        <div class="stat-card">
+          <div class="stat-label">Total Members</div>
+          <div class="stat-value">248</div>
+          <div class="stat-change up">▲ 12 this month</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-label">Revenue (Apr)</div>
+          <div class="stat-value">₹1.86L</div>
+          <div class="stat-change up">▲ 8% vs last month</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-label">Expiring Soon</div>
+          <div class="stat-value">18</div>
+          <div class="stat-change down">Next 7 days</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-label">Today's Check-ins</div>
+          <div class="stat-value">43</div>
+          <div class="stat-change up">▲ 5 vs yesterday</div>
+        </div>
+      </div>
+
+      <div class="two-col">
+        <div class="card">
+          <div class="card-title">Monthly Revenue</div>
+          <div class="bar-chart">
+            <div class="bar-col"><div class="bar-amt">1.2L</div><div class="bar-fill" style="height:52px"></div><div class="bar-month">Nov</div></div>
+            <div class="bar-col"><div class="bar-amt">1.4L</div><div class="bar-fill" style="height:60px"></div><div class="bar-month">Dec</div></div>
+            <div class="bar-col"><div class="bar-amt">1.1L</div><div class="bar-fill" style="height:46px"></div><div class="bar-month">Jan</div></div>
+            <div class="bar-col"><div class="bar-amt">1.5L</div><div class="bar-fill" style="height:64px"></div><div class="bar-month">Feb</div></div>
+            <div class="bar-col"><div class="bar-amt">1.7L</div><div class="bar-fill" style="height:74px"></div><div class="bar-month">Mar</div></div>
+            <div class="bar-col"><div class="bar-amt">1.86L</div><div class="bar-fill current" style="height:84px"></div><div class="bar-month" style="color:var(--purple);font-weight:600">Apr</div></div>
+          </div>
+        </div>
+        <div class="card">
+          <div class="card-title">Expiring This Week</div>
+          <div class="list-row">
+            <div class="av av-sm" style="background:#FCEBEB;color:#A32D2D">PK</div>
+            <div style="flex:1"><div style="font-size:13px;font-weight:500">Priya K.</div><div style="font-size:11px;color:var(--text3)">Monthly Plan</div></div>
+            <span class="badge badge-expired">2 days</span>
+          </div>
+          <div class="list-row">
+            <div class="av av-sm" style="background:#FAEEDA;color:#854F0B">AR</div>
+            <div style="flex:1"><div style="font-size:13px;font-weight:500">Arun R.</div><div style="font-size:11px;color:var(--text3)">Quarterly</div></div>
+            <span class="badge badge-expiring">4 days</span>
+          </div>
+          <div class="list-row">
+            <div class="av av-sm" style="background:#FAEEDA;color:#854F0B">SM</div>
+            <div style="flex:1"><div style="font-size:13px;font-weight:500">Siva M.</div><div style="font-size:11px;color:var(--text3)">Monthly Plan</div></div>
+            <span class="badge badge-expiring">6 days</span>
+          </div>
+          <div class="list-row">
+            <div class="av av-sm" style="background:#F1EFE8;color:#5F5E5A">VT</div>
+            <div style="flex:1"><div style="font-size:13px;font-weight:500">Vijay T.</div><div style="font-size:11px;color:var(--text3)">Annual</div></div>
+            <span class="badge" style="background:#F1EFE8;color:#5F5E5A">7 days</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px">
+          <div class="card-title" style="margin-bottom:0">Recent Members</div>
+          <button class="btn btn-sm" onclick="go('members',document.querySelector('.nav-item:nth-child(2)'),'Members')">View all</button>
+        </div>
+        <div class="list-row">
+          <div class="av av-sm" style="background:#EEEDFE;color:#3C3489">KR</div>
+          <div style="flex:1"><div style="font-size:13px;font-weight:500">Karthik R.</div><div style="font-size:11px;color:var(--text3)">Monthly · Joined Apr 10</div></div>
+          <span class="badge badge-active">Active</span>
+        </div>
+        <div class="list-row">
+          <div class="av av-sm" style="background:#E1F5EE;color:#085041">DL</div>
+          <div style="flex:1"><div style="font-size:13px;font-weight:500">Deepa L.</div><div style="font-size:11px;color:var(--text3)">Annual · Joined Apr 8</div></div>
+          <span class="badge badge-active">Active</span>
+        </div>
+        <div class="list-row">
+          <div class="av av-sm" style="background:#FAEEDA;color:#854F0B">MN</div>
+          <div style="flex:1"><div style="font-size:13px;font-weight:500">Mahesh N.</div><div style="font-size:11px;color:var(--text3)">Quarterly · Joined Apr 6</div></div>
+          <span class="badge badge-expiring">Expiring</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- ========== MEMBERS ========== -->
+    <div class="screen" id="screen-members">
+      <div class="toolbar">
+        <input class="search-input" type="text" placeholder="Search by name or phone..." id="member-search" oninput="filterMembers()">
+        <button class="btn btn-primary" onclick="openModal('add-member-modal')">+ Add Member</button>
+      </div>
+      <!-- Mobile cards -->
+      <div class="member-card-list">
+        <div class="member-card" onclick="showProfile('KR','Karthik R.','+91 98400 11223','Monthly','Apr 10, 2026','May 10, 2026','Ramesh V.','Active','active')"><div style="display:flex;align-items:center;gap:12px"><div class="av av-md" style="background:#EEEDFE;color:#3C3489">KR</div><div style="flex:1"><div style="font-weight:600;font-size:14px">Karthik R.</div><div style="font-size:12px;color:var(--text3)">+91 98400 11223 · Monthly</div></div><span class="badge badge-active">Active</span></div></div>
+        <div class="member-card" onclick="showProfile('DL','Deepa L.','+91 93800 44556','Annual','Apr 8, 2026','Apr 8, 2027','Priya S.','Active','active')"><div style="display:flex;align-items:center;gap:12px"><div class="av av-md" style="background:#E1F5EE;color:#085041">DL</div><div style="flex:1"><div style="font-weight:600;font-size:14px">Deepa L.</div><div style="font-size:12px;color:var(--text3)">+91 93800 44556 · Annual</div></div><span class="badge badge-active">Active</span></div></div>
+        <div class="member-card" onclick="showProfile('MN','Mahesh N.','+91 99400 77889','Quarterly','Jan 6, 2026','Apr 17, 2026','Ramesh V.','Expiring','expiring')"><div style="display:flex;align-items:center;gap:12px"><div class="av av-md" style="background:#FAEEDA;color:#854F0B">MN</div><div style="flex:1"><div style="font-weight:600;font-size:14px">Mahesh N.</div><div style="font-size:12px;color:var(--text3)">+91 99400 77889 · Quarterly</div></div><span class="badge badge-expiring">Expiring</span></div></div>
+        <div class="member-card" onclick="showProfile('PK','Priya K.','+91 97400 22334','Monthly','Mar 15, 2026','Apr 15, 2026','Priya S.','Expiring','expiring')"><div style="display:flex;align-items:center;gap:12px"><div class="av av-md" style="background:#FCEBEB;color:#A32D2D">PK</div><div style="flex:1"><div style="font-weight:600;font-size:14px">Priya K.</div><div style="font-size:12px;color:var(--text3)">+91 97400 22334 · Monthly</div></div><span class="badge badge-expiring">Expiring</span></div></div>
+        <div class="member-card"><div style="display:flex;align-items:center;gap:12px"><div class="av av-md" style="background:#FCEBEB;color:#A32D2D">RV</div><div style="flex:1"><div style="font-weight:600;font-size:14px">Ramesh V.</div><div style="font-size:12px;color:var(--text3)">+91 98000 55667 · Monthly</div></div><span class="badge badge-expired">Expired</span></div></div>
+        <div class="member-card"><div style="display:flex;align-items:center;gap:12px"><div class="av av-md" style="background:#E1F5EE;color:#085041">AS</div><div style="flex:1"><div style="font-weight:600;font-size:14px">Anitha S.</div><div style="font-size:12px;color:var(--text3)">+91 96400 88990 · Annual</div></div><span class="badge badge-active">Active</span></div></div>
+      </div>
+      <!-- Desktop table -->
+      <div class="card table-desktop" style="padding:0;overflow:hidden">
+        <table>
+          <thead><tr>
+            <th>Member</th><th>Plan</th><th>Joined</th><th>Expires</th><th>Trainer</th><th>Status</th><th></th>
+          </tr></thead>
+          <tbody id="member-table-body">
+            <tr onclick="showProfile('KR','Karthik R.','+91 98400 11223','Monthly','Apr 10, 2026','May 10, 2026','Ramesh V.','Active','active')" style="cursor:pointer">
+              <td><div style="display:flex;align-items:center;gap:10px"><div class="av av-sm" style="background:#EEEDFE;color:#3C3489">KR</div><div><div style="font-weight:500">Karthik R.</div><div style="font-size:11px;color:var(--text3)">+91 98400 11223</div></div></div></td>
+              <td><span class="plan-pill">Monthly</span></td><td>Apr 10</td><td>May 10</td><td>Ramesh V.</td>
+              <td><span class="badge badge-active">Active</span></td>
+              <td><button class="btn btn-sm btn-ghost" onclick="event.stopPropagation();showProfile('KR','Karthik R.','+91 98400 11223','Monthly','Apr 10, 2026','May 10, 2026','Ramesh V.','Active','active')">View</button></td>
+            </tr>
+            <tr onclick="showProfile('DL','Deepa L.','+91 93800 44556','Annual','Apr 8, 2026','Apr 8, 2027','Priya S.','Active','active')" style="cursor:pointer">
+              <td><div style="display:flex;align-items:center;gap:10px"><div class="av av-sm" style="background:#E1F5EE;color:#085041">DL</div><div><div style="font-weight:500">Deepa L.</div><div style="font-size:11px;color:var(--text3)">+91 93800 44556</div></div></div></td>
+              <td><span class="plan-pill">Annual</span></td><td>Apr 8</td><td>Apr 8, 2027</td><td>Priya S.</td>
+              <td><span class="badge badge-active">Active</span></td>
+              <td><button class="btn btn-sm btn-ghost" onclick="event.stopPropagation()">View</button></td>
+            </tr>
+            <tr onclick="showProfile('MN','Mahesh N.','+91 99400 77889','Quarterly','Jan 6, 2026','Apr 17, 2026','Ramesh V.','Expiring','expiring')" style="cursor:pointer">
+              <td><div style="display:flex;align-items:center;gap:10px"><div class="av av-sm" style="background:#FAEEDA;color:#854F0B">MN</div><div><div style="font-weight:500">Mahesh N.</div><div style="font-size:11px;color:var(--text3)">+91 99400 77889</div></div></div></td>
+              <td><span class="plan-pill">Quarterly</span></td><td>Jan 6</td><td>Apr 17</td><td>Ramesh V.</td>
+              <td><span class="badge badge-expiring">Expiring</span></td>
+              <td><button class="btn btn-sm btn-ghost" onclick="event.stopPropagation()">View</button></td>
+            </tr>
+            <tr onclick="showProfile('PK','Priya K.','+91 97400 22334','Monthly','Mar 15, 2026','Apr 15, 2026','Priya S.','Expiring','expiring')" style="cursor:pointer">
+              <td><div style="display:flex;align-items:center;gap:10px"><div class="av av-sm" style="background:#FCEBEB;color:#A32D2D">PK</div><div><div style="font-weight:500">Priya K.</div><div style="font-size:11px;color:var(--text3)">+91 97400 22334</div></div></div></td>
+              <td><span class="plan-pill">Monthly</span></td><td>Mar 15</td><td>Apr 15</td><td>Priya S.</td>
+              <td><span class="badge badge-expiring">Expiring</span></td>
+              <td><button class="btn btn-sm btn-ghost" onclick="event.stopPropagation()">View</button></td>
+            </tr>
+            <tr style="cursor:pointer">
+              <td><div style="display:flex;align-items:center;gap:10px"><div class="av av-sm" style="background:#FCEBEB;color:#A32D2D">RV</div><div><div style="font-weight:500">Ramesh V.</div><div style="font-size:11px;color:var(--text3)">+91 98000 55667</div></div></div></td>
+              <td><span class="plan-pill">Monthly</span></td><td>Feb 20</td><td>Mar 20</td><td>—</td>
+              <td><span class="badge badge-expired">Expired</span></td>
+              <td><button class="btn btn-sm btn-ghost">View</button></td>
+            </tr>
+            <tr style="cursor:pointer">
+              <td><div style="display:flex;align-items:center;gap:10px"><div class="av av-sm" style="background:#E1F5EE;color:#085041">AS</div><div><div style="font-weight:500">Anitha S.</div><div style="font-size:11px;color:var(--text3)">+91 96400 88990</div></div></div></td>
+              <td><span class="plan-pill">Annual</span></td><td>Jan 1</td><td>Jan 1, 2027</td><td>Ramesh V.</td>
+              <td><span class="badge badge-active">Active</span></td>
+              <td><button class="btn btn-sm btn-ghost">View</button></td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+      <div style="font-size:12px;color:var(--text3);text-align:right">Showing 6 of 248 members</div>
+    </div>
+
+    <!-- ========== MEMBER PROFILE ========== -->
+    <div class="screen" id="screen-profile">
+      <div class="breadcrumb" onclick="go('members',document.querySelectorAll('.nav-item')[1],'Members')">
+        ← <span>Members</span> / <span id="profile-name-crumb" style="color:var(--text)">Member</span>
+      </div>
+      <div class="two-col" style="align-items:start">
+        <div>
+          <div class="card">
+            <div class="profile-header">
+              <div class="av av-lg" id="profile-avatar" style="background:#EEEDFE;color:#3C3489">KR</div>
+              <div class="profile-info">
+                <h2 id="profile-fullname">Karthik R.</h2>
+                <p id="profile-phone">+91 98400 11223</p>
+                <div style="margin-top:8px;display:flex;gap:8px">
+                  <span class="plan-pill" id="profile-plan">Monthly</span>
+                  <span class="badge" id="profile-status-badge">Active</span>
+                </div>
+              </div>
+            </div>
+            <div class="profile-stats">
+              <div class="profile-stat"><div class="profile-stat-val">38</div><div class="profile-stat-label">Days attended</div></div>
+              <div class="profile-stat"><div class="profile-stat-val">92%</div><div class="profile-stat-label">Attendance rate</div></div>
+              <div class="profile-stat"><div class="profile-stat-val">₹1,200</div><div class="profile-stat-label">Fees paid</div></div>
+            </div>
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;font-size:13px">
+              <div><div style="color:var(--text3);font-size:11px;margin-bottom:3px">Joined</div><div id="profile-joined">Apr 10, 2026</div></div>
+              <div><div style="color:var(--text3);font-size:11px;margin-bottom:3px">Expires</div><div id="profile-expires">May 10, 2026</div></div>
+              <div><div style="color:var(--text3);font-size:11px;margin-bottom:3px">Trainer</div><div id="profile-trainer">Ramesh V.</div></div>
+              <div><div style="color:var(--text3);font-size:11px;margin-bottom:3px">Goal</div><div>Weight Loss</div></div>
+            </div>
+          </div>
+          <div class="card">
+            <div class="card-title">Payment History</div>
+            <div class="list-row"><div style="flex:1"><div style="font-size:13px;font-weight:500">April 2026</div><div style="font-size:11px;color:var(--text3)">Monthly renewal</div></div><div style="font-weight:600;color:var(--teal)">₹1,200</div><span class="badge badge-paid" style="margin-left:10px">Paid</span></div>
+            <div class="list-row"><div style="flex:1"><div style="font-size:13px;font-weight:500">March 2026</div><div style="font-size:11px;color:var(--text3)">Monthly renewal</div></div><div style="font-weight:600;color:var(--teal)">₹1,200</div><span class="badge badge-paid" style="margin-left:10px">Paid</span></div>
+            <div class="list-row"><div style="flex:1"><div style="font-size:13px;font-weight:500">February 2026</div><div style="font-size:11px;color:var(--text3)">Monthly renewal</div></div><div style="font-weight:600;color:var(--teal)">₹1,200</div><span class="badge badge-paid" style="margin-left:10px">Paid</span></div>
+          </div>
+        </div>
+        <div>
+          <div class="card">
+            <div class="card-title">Activity Timeline</div>
+            <div class="timeline">
+              <div class="timeline-item"><div class="timeline-dot"></div><div><div class="timeline-label">Membership renewed</div><div class="timeline-date">Apr 10, 2026</div></div></div>
+              <div class="timeline-item"><div class="timeline-dot" style="background:var(--teal)"></div><div><div class="timeline-label">Attended 20 sessions in March</div><div class="timeline-date">Mar 31, 2026</div></div></div>
+              <div class="timeline-item"><div class="timeline-dot"></div><div><div class="timeline-label">Trainer assigned — Ramesh V.</div><div class="timeline-date">Mar 15, 2026</div></div></div>
+              <div class="timeline-item"><div class="timeline-dot" style="background:var(--amber)"></div><div><div class="timeline-label">Membership renewed</div><div class="timeline-date">Mar 10, 2026</div></div></div>
+              <div class="timeline-item"><div class="timeline-dot" style="background:var(--teal)"></div><div><div class="timeline-label">First check-in</div><div class="timeline-date">Feb 10, 2026</div></div></div>
+              <div class="timeline-item"><div class="timeline-dot" style="background:var(--purple)"></div><div><div class="timeline-label">Member registered</div><div class="timeline-date">Feb 10, 2026</div></div></div>
+            </div>
+          </div>
+          <div style="display:flex;gap:8px">
+            <button class="btn btn-primary" style="flex:1">Renew Plan</button>
+            <button class="btn" style="flex:1">Send Message</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ========== TRAINERS ========== -->
+    <div class="screen" id="screen-trainers">
+      <div class="toolbar">
+        <div style="flex:1;font-size:13px;color:var(--text2)">4 active trainers</div>
+        <button class="btn btn-primary">+ Add Trainer</button>
+      </div>
+      <div class="trainer-grid">
+        <div class="trainer-card">
+          <div style="display:flex;align-items:center;gap:12px">
+            <div class="av av-md" style="background:#EEEDFE;color:#3C3489">RV</div>
+            <div><div style="font-weight:600;font-size:14px">Ramesh V.</div><div style="font-size:12px;color:var(--text3)">Strength & Conditioning</div></div>
+          </div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;font-size:12px">
+            <div><div style="color:var(--text3)">Members</div><div style="font-weight:600;font-size:15px">24</div></div>
+            <div><div style="color:var(--text3)">Experience</div><div style="font-weight:600;font-size:15px">6 yrs</div></div>
+          </div>
+          <div style="font-size:12px;color:var(--text3)">+91 98765 43210</div>
+          <div style="display:flex;gap:6px">
+            <span class="badge badge-active">Active</span>
+            <span class="badge badge-trainer">Certified</span>
+          </div>
+        </div>
+        <div class="trainer-card">
+          <div style="display:flex;align-items:center;gap:12px">
+            <div class="av av-md" style="background:#E1F5EE;color:#085041">PS</div>
+            <div><div style="font-weight:600;font-size:14px">Priya S.</div><div style="font-size:12px;color:var(--text3)">Yoga & Flexibility</div></div>
+          </div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;font-size:12px">
+            <div><div style="color:var(--text3)">Members</div><div style="font-weight:600;font-size:15px">18</div></div>
+            <div><div style="color:var(--text3)">Experience</div><div style="font-weight:600;font-size:15px">4 yrs</div></div>
+          </div>
+          <div style="font-size:12px;color:var(--text3)">+91 99876 54321</div>
+          <div style="display:flex;gap:6px">
+            <span class="badge badge-active">Active</span>
+            <span class="badge badge-trainer">Certified</span>
+          </div>
+        </div>
+        <div class="trainer-card">
+          <div style="display:flex;align-items:center;gap:12px">
+            <div class="av av-md" style="background:#FAEEDA;color:#854F0B">AK</div>
+            <div><div style="font-weight:600;font-size:14px">Arjun K.</div><div style="font-size:12px;color:var(--text3)">Cardio & HIIT</div></div>
+          </div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;font-size:12px">
+            <div><div style="color:var(--text3)">Members</div><div style="font-weight:600;font-size:15px">31</div></div>
+            <div><div style="color:var(--text3)">Experience</div><div style="font-weight:600;font-size:15px">8 yrs</div></div>
+          </div>
+          <div style="font-size:12px;color:var(--text3)">+91 97654 32109</div>
+          <div style="display:flex;gap:6px">
+            <span class="badge badge-active">Active</span>
+          </div>
+        </div>
+        <div class="trainer-card">
+          <div style="display:flex;align-items:center;gap:12px">
+            <div class="av av-md" style="background:#F1EFE8;color:#5F5E5A">LM</div>
+            <div><div style="font-weight:600;font-size:14px">Lakshmi M.</div><div style="font-size:12px;color:var(--text3)">Nutrition & Wellness</div></div>
+          </div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;font-size:12px">
+            <div><div style="color:var(--text3)">Members</div><div style="font-weight:600;font-size:15px">15</div></div>
+            <div><div style="color:var(--text3)">Experience</div><div style="font-weight:600;font-size:15px">3 yrs</div></div>
+          </div>
+          <div style="font-size:12px;color:var(--text3)">+91 95432 10987</div>
+          <div style="display:flex;gap:6px">
+            <span class="badge badge-active">Active</span>
+          </div>
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-title">Trainer Schedule — This Week</div>
+        <div class="trainer-schedule-wrap">
+        <table>
+          <thead><tr><th>Trainer</th><th>Mon</th><th>Tue</th><th>Wed</th><th>Thu</th><th>Fri</th><th>Sat</th></tr></thead>
+          <tbody>
+            <tr><td style="font-weight:500">Ramesh V.</td><td>6–9 AM</td><td>6–9 AM</td><td>Off</td><td>6–9 AM</td><td>6–9 AM</td><td>7–10 AM</td></tr>
+            <tr><td style="font-weight:500">Priya S.</td><td>9–11 AM</td><td>9–11 AM</td><td>9–11 AM</td><td>Off</td><td>9–11 AM</td><td>9–11 AM</td></tr>
+            <tr><td style="font-weight:500">Arjun K.</td><td>5–8 PM</td><td>5–8 PM</td><td>5–8 PM</td><td>5–8 PM</td><td>Off</td><td>5–7 PM</td></tr>
+            <tr><td style="font-weight:500">Lakshmi M.</td><td>Off</td><td>10 AM–1 PM</td><td>10 AM–1 PM</td><td>10 AM–1 PM</td><td>10 AM–1 PM</td><td>Off</td></tr>
+          </tbody>
+        </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- ========== BILLING ========== -->
+    <div class="screen" id="screen-billing">
+      <div class="stats-grid stats-3">
+        <div class="stat-card"><div class="stat-label">Collected (Apr)</div><div class="stat-value">₹1.86L</div><div class="stat-change up">▲ 8% vs March</div></div>
+        <div class="stat-card"><div class="stat-label">Pending</div><div class="stat-value" style="color:var(--red)">₹12,400</div><div class="stat-change down">8 unpaid invoices</div></div>
+        <div class="stat-card"><div class="stat-label">Renewals Due</div><div class="stat-value">18</div><div class="stat-change">Next 7 days</div></div>
+      </div>
+      <!-- Mobile billing cards -->
+      <div class="billing-card-list">
+        <div class="member-card"><div style="display:flex;align-items:center;gap:12px"><div class="av av-sm" style="background:#EEEDFE;color:#3C3489">KR</div><div style="flex:1"><div style="font-weight:600">Karthik R.</div><div style="font-size:12px;color:var(--text3)">Monthly · Apr 10</div></div><div style="text-align:right"><div style="font-weight:600;color:var(--teal)">₹1,200</div><span class="badge badge-paid" style="margin-top:4px">Paid</span></div></div></div>
+        <div class="member-card"><div style="display:flex;align-items:center;gap:12px"><div class="av av-sm" style="background:#E1F5EE;color:#085041">DL</div><div style="flex:1"><div style="font-weight:600">Deepa L.</div><div style="font-size:12px;color:var(--text3)">Annual · Apr 8</div></div><div style="text-align:right"><div style="font-weight:600;color:var(--teal)">₹9,000</div><span class="badge badge-paid" style="margin-top:4px">Paid</span></div></div></div>
+        <div class="member-card" onclick="showToast('Reminder sent to Mahesh N. via WhatsApp!')"><div style="display:flex;align-items:center;gap:12px"><div class="av av-sm" style="background:#FAEEDA;color:#854F0B">MN</div><div style="flex:1"><div style="font-weight:600">Mahesh N.</div><div style="font-size:12px;color:var(--text3)">Quarterly · Due Apr 17</div></div><div style="text-align:right"><div style="font-weight:600;color:var(--amber)">₹3,200</div><span class="badge badge-pending" style="margin-top:4px">Pending</span></div></div></div>
+        <div class="member-card" onclick="showToast('Reminder sent to Priya K. via WhatsApp!')"><div style="display:flex;align-items:center;gap:12px"><div class="av av-sm" style="background:#FCEBEB;color:#A32D2D">PK</div><div style="flex:1"><div style="font-weight:600">Priya K.</div><div style="font-size:12px;color:var(--text3)">Monthly · Due Apr 15</div></div><div style="text-align:right"><div style="font-weight:600;color:var(--red)">₹1,200</div><span class="badge badge-due" style="margin-top:4px">Overdue</span></div></div></div>
+        <div class="member-card" onclick="showToast('Reminder sent to Ramesh V. via WhatsApp!')"><div style="display:flex;align-items:center;gap:12px"><div class="av av-sm" style="background:#FCEBEB;color:#A32D2D">RV</div><div style="flex:1"><div style="font-weight:600">Ramesh V.</div><div style="font-size:12px;color:var(--text3)">Monthly · Due Mar 20</div></div><div style="text-align:right"><div style="font-weight:600;color:var(--red)">₹1,200</div><span class="badge badge-due" style="margin-top:4px">Overdue</span></div></div></div>
+        <div class="member-card"><div style="display:flex;align-items:center;gap:12px"><div class="av av-sm" style="background:#E1F5EE;color:#085041">AS</div><div style="flex:1"><div style="font-weight:600">Anitha S.</div><div style="font-size:12px;color:var(--text3)">Annual · Jan 1</div></div><div style="text-align:right"><div style="font-weight:600;color:var(--teal)">₹9,000</div><span class="badge badge-paid" style="margin-top:4px">Paid</span></div></div></div>
+      </div>
+      <!-- Desktop billing table -->
+      <div class="card billing-table-desktop" style="padding:0;overflow:hidden">
+        <table>
+          <thead><tr><th>Member</th><th>Plan</th><th>Amount</th><th>Date</th><th>Status</th><th></th></tr></thead>
+          <tbody>
+            <tr><td><div style="display:flex;align-items:center;gap:10px"><div class="av av-sm" style="background:#EEEDFE;color:#3C3489">KR</div><span style="font-weight:500">Karthik R.</span></div></td><td>Monthly</td><td style="font-weight:600;color:var(--teal)">₹1,200</td><td>Apr 10</td><td><span class="badge badge-paid">Paid</span></td><td><button class="btn btn-sm btn-ghost">Receipt</button></td></tr>
+            <tr><td><div style="display:flex;align-items:center;gap:10px"><div class="av av-sm" style="background:#E1F5EE;color:#085041">DL</div><span style="font-weight:500">Deepa L.</span></div></td><td>Annual</td><td style="font-weight:600;color:var(--teal)">₹9,000</td><td>Apr 8</td><td><span class="badge badge-paid">Paid</span></td><td><button class="btn btn-sm btn-ghost">Receipt</button></td></tr>
+            <tr><td><div style="display:flex;align-items:center;gap:10px"><div class="av av-sm" style="background:#FAEEDA;color:#854F0B">MN</div><span style="font-weight:500">Mahesh N.</span></div></td><td>Quarterly</td><td style="font-weight:600;color:var(--amber)">₹3,200</td><td>Due Apr 17</td><td><span class="badge badge-pending">Pending</span></td><td><button class="btn btn-sm btn-ghost" onclick="showToast('Reminder sent to Mahesh N. via WhatsApp!')">Remind</button></td></tr>
+            <tr><td><div style="display:flex;align-items:center;gap:10px"><div class="av av-sm" style="background:#FCEBEB;color:#A32D2D">PK</div><span style="font-weight:500">Priya K.</span></div></td><td>Monthly</td><td style="font-weight:600;color:var(--red)">₹1,200</td><td>Due Apr 15</td><td><span class="badge badge-due">Overdue</span></td><td><button class="btn btn-sm btn-ghost" onclick="showToast('Reminder sent to Priya K. via WhatsApp!')">Remind</button></td></tr>
+            <tr><td><div style="display:flex;align-items:center;gap:10px"><div class="av av-sm" style="background:#FCEBEB;color:#A32D2D">RV</div><span style="font-weight:500">Ramesh V.</span></div></td><td>Monthly</td><td style="font-weight:600;color:var(--red)">₹1,200</td><td>Due Mar 20</td><td><span class="badge badge-due">Overdue</span></td><td><button class="btn btn-sm btn-ghost" onclick="showToast('Reminder sent to Ramesh V. via WhatsApp!')">Remind</button></td></tr>
+            <tr><td><div style="display:flex;align-items:center;gap:10px"><div class="av av-sm" style="background:#E1F5EE;color:#085041">AS</div><span style="font-weight:500">Anitha S.</span></div></td><td>Annual</td><td style="font-weight:600;color:var(--teal)">₹9,000</td><td>Jan 1</td><td><span class="badge badge-paid">Paid</span></td><td><button class="btn btn-sm btn-ghost">Receipt</button></td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- ========== ATTENDANCE ========== -->
+    <div class="screen" id="screen-attendance">
+      <div class="two-col">
+        <div>
+          <div class="card">
+            <div class="card-title">This Week — Daily Check-ins</div>
+            <div class="att-week">
+              <div class="att-cell-wrap"><div class="att-day-lbl">Mon</div><div class="att-cell att-high">52</div></div>
+              <div class="att-cell-wrap"><div class="att-day-lbl">Tue</div><div class="att-cell att-high">48</div></div>
+              <div class="att-cell-wrap"><div class="att-day-lbl">Wed</div><div class="att-cell att-mid">38</div></div>
+              <div class="att-cell-wrap"><div class="att-day-lbl">Thu</div><div class="att-cell att-high">55</div></div>
+              <div class="att-cell-wrap"><div class="att-day-lbl">Fri</div><div class="att-cell att-mid">41</div></div>
+              <div class="att-cell-wrap"><div class="att-day-lbl">Sat</div><div class="att-cell att-high att-today">43</div></div>
+              <div class="att-cell-wrap"><div class="att-day-lbl">Sun</div><div class="att-cell att-low">—</div></div>
+            </div>
+            <div style="display:flex;gap:12px;font-size:11px;color:var(--text3)">
+              <span><span style="display:inline-block;width:10px;height:10px;border-radius:2px;background:var(--green-mid);margin-right:4px;vertical-align:middle"></span>High (40+)</span>
+              <span><span style="display:inline-block;width:10px;height:10px;border-radius:2px;background:var(--amber-light);margin-right:4px;vertical-align:middle"></span>Medium</span>
+              <span><span style="display:inline-block;width:10px;height:10px;border-radius:2px;background:var(--gray-light);margin-right:4px;vertical-align:middle"></span>Low</span>
+            </div>
+          </div>
+          <div class="card">
+            <div class="card-title">Peak Hours Today</div>
+            <div style="display:flex;align-items:flex-end;gap:6px;height:80px">
+              <div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:4px"><div style="font-size:10px;color:var(--text2);font-weight:500">18</div><div style="width:100%;border-radius:3px 3px 0 0;background:var(--purple-mid);height:58px"></div><div style="font-size:9px;color:var(--text3)">6–7</div></div>
+              <div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:4px"><div style="font-size:10px;color:var(--text2);font-weight:500">12</div><div style="width:100%;border-radius:3px 3px 0 0;background:var(--purple-mid);height:38px"></div><div style="font-size:9px;color:var(--text3)">7–8</div></div>
+              <div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:4px"><div style="font-size:10px;color:var(--text2);font-weight:500">6</div><div style="width:100%;border-radius:3px 3px 0 0;background:var(--purple-mid);height:20px"></div><div style="font-size:9px;color:var(--text3)">8–9</div></div>
+              <div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:4px"><div style="font-size:10px;color:var(--text2);font-weight:500">3</div><div style="width:100%;border-radius:3px 3px 0 0;background:var(--purple-mid);height:10px"></div><div style="font-size:9px;color:var(--text3)">9–10</div></div>
+              <div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:4px"><div style="font-size:10px;color:var(--text2);font-weight:500">4</div><div style="width:100%;border-radius:3px 3px 0 0;background:var(--purple-mid);height:13px"></div><div style="font-size:9px;color:var(--text3)">5–6 PM</div></div>
+            </div>
+          </div>
+        </div>
+        <div class="card" style="height:fit-content">
+          <div class="card-title">Today's Check-ins · 43 total</div>
+          <div class="list-row"><div class="av av-sm" style="background:#EEEDFE;color:#3C3489">KR</div><div style="flex:1;font-size:13px">Karthik R.</div><div style="font-size:11px;color:var(--text3)">6:02 AM</div></div>
+          <div class="list-row"><div class="av av-sm" style="background:#E1F5EE;color:#085041">AS</div><div style="flex:1;font-size:13px">Anitha S.</div><div style="font-size:11px;color:var(--text3)">6:15 AM</div></div>
+          <div class="list-row"><div class="av av-sm" style="background:#FAEEDA;color:#854F0B">MN</div><div style="flex:1;font-size:13px">Mahesh N.</div><div style="font-size:11px;color:var(--text3)">6:45 AM</div></div>
+          <div class="list-row"><div class="av av-sm" style="background:#E1F5EE;color:#085041">DL</div><div style="flex:1;font-size:13px">Deepa L.</div><div style="font-size:11px;color:var(--text3)">7:10 AM</div></div>
+          <div class="list-row"><div class="av av-sm" style="background:#FCEBEB;color:#A32D2D">PK</div><div style="flex:1;font-size:13px">Priya K.</div><div style="font-size:11px;color:var(--text3)">7:30 AM</div></div>
+          <div style="text-align:center;padding:12px 0 4px;font-size:12px;color:var(--text3)">+ 38 more today</div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<!-- ADD MEMBER MODAL -->
+<div class="modal-overlay" id="add-member-modal" onclick="closeIfOverlay(event,'add-member-modal')">
+  <div class="modal">
+    <div class="modal-header">
+      <div class="modal-title">Add New Member</div>
+      <button class="modal-close" onclick="closeModal('add-member-modal')">✕</button>
+    </div>
+    <div class="form-grid">
+      <div class="form-group">
+        <label class="form-label">Full Name *</label>
+        <input class="form-input" type="text" placeholder="e.g. Karthik Rajan">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Phone Number *</label>
+        <input class="form-input" type="tel" placeholder="+91 98400 00000">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Email</label>
+        <input class="form-input" type="email" placeholder="karthik@email.com">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Date of Birth</label>
+        <input class="form-input" type="date">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Membership Plan *</label>
+        <select class="form-select">
+          <option>Select a plan</option>
+          <option>Monthly — ₹1,200</option>
+          <option>Quarterly — ₹3,200</option>
+          <option>Annual — ₹9,000</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Assign Trainer</label>
+        <select class="form-select">
+          <option>No trainer</option>
+          <option>Ramesh V. — Strength</option>
+          <option>Priya S. — Yoga</option>
+          <option>Arjun K. — Cardio</option>
+          <option>Lakshmi M. — Nutrition</option>
+        </select>
+      </div>
+    </div>
+    <div class="form-group">
+      <label class="form-label">Fitness Goal</label>
+      <select class="form-select">
+        <option>Select goal</option>
+        <option>Weight Loss</option>
+        <option>Muscle Gain</option>
+        <option>General Fitness</option>
+        <option>Flexibility</option>
+        <option>Sports Performance</option>
+      </select>
+    </div>
+    <div class="form-group">
+      <label class="form-label">Notes</label>
+      <textarea class="form-input" rows="2" placeholder="Any health conditions or special requirements..." style="resize:vertical"></textarea>
+    </div>
+    <div style="display:flex;gap:10px;justify-content:flex-end;margin-top:8px">
+      <button class="btn" onclick="closeModal('add-member-modal')">Cancel</button>
+      <button class="btn btn-primary" onclick="closeModal('add-member-modal');showToast('Member added successfully!')">Add Member</button>
+    </div>
+  </div>
+</div>
+
+<!-- TOAST -->
+<div class="toast" id="toast"></div>
+
+<script>
+  const sideNavItems = document.querySelectorAll('.sidebar .nav-item');
+  const bottomNavItems = document.querySelectorAll('.bn-item');
+  const screenMap = {dashboard:0,members:1,trainers:2,billing:3,attendance:4};
+
+  function go(id, el, title) {
+    document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+    sideNavItems.forEach(n => n.classList.remove('active'));
+    document.getElementById('screen-' + id).classList.add('active');
+    if(el) el.classList.add('active');
+    document.getElementById('page-title').textContent = title;
+    const idx = screenMap[id];
+    if(idx !== undefined) {
+      bottomNavItems.forEach(b => b.classList.remove('active'));
+      if(bottomNavItems[idx]) bottomNavItems[idx].classList.add('active');
+    }
+  }
+
+  function goMobile(id, el, title) {
+    document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+    sideNavItems.forEach(n => n.classList.remove('active'));
+    bottomNavItems.forEach(b => b.classList.remove('active'));
+    document.getElementById('screen-' + id).classList.add('active');
+    el.classList.add('active');
+    document.getElementById('page-title').textContent = title;
+    const idx = screenMap[id];
+    if(idx !== undefined && sideNavItems[idx]) sideNavItems[idx].classList.add('active');
+  }
+
+  function showProfile(initials, name, phone, plan, joined, expires, trainer, statusLabel, statusKey) {
+    document.getElementById('profile-avatar').textContent = initials;
+    const colors = {KR:['#EEEDFE','#3C3489'],DL:['#E1F5EE','#085041'],MN:['#FAEEDA','#854F0B'],PK:['#FCEBEB','#A32D2D']};
+    const c = colors[initials] || ['#F1EFE8','#5F5E5A'];
+    document.getElementById('profile-avatar').style.background = c[0];
+    document.getElementById('profile-avatar').style.color = c[1];
+    document.getElementById('profile-fullname').textContent = name;
+    document.getElementById('profile-name-crumb').textContent = name;
+    document.getElementById('profile-phone').textContent = phone;
+    document.getElementById('profile-plan').textContent = plan;
+    document.getElementById('profile-joined').textContent = joined;
+    document.getElementById('profile-expires').textContent = expires;
+    document.getElementById('profile-trainer').textContent = trainer;
+    const sb = document.getElementById('profile-status-badge');
+    sb.textContent = statusLabel;
+    sb.className = 'badge badge-' + statusKey;
+    document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+    document.getElementById('screen-profile').classList.add('active');
+    document.getElementById('page-title').textContent = 'Member Profile';
+    sideNavItems.forEach(n => n.classList.remove('active'));
+    if(sideNavItems[1]) sideNavItems[1].classList.add('active');
+    bottomNavItems.forEach(b => b.classList.remove('active'));
+    if(bottomNavItems[1]) bottomNavItems[1].classList.add('active');
+  }
+
+  function openModal(id) { document.getElementById(id).classList.add('open'); }
+  function closeModal(id) { document.getElementById(id).classList.remove('open'); }
+  function closeIfOverlay(e, id) { if(e.target === document.getElementById(id)) closeModal(id); }
+
+  function showToast(msg) {
+    const t = document.getElementById('toast');
+    t.textContent = msg;
+    t.classList.add('show');
+    setTimeout(() => t.classList.remove('show'), 3000);
+  }
+
+  function filterMembers() {
+    const q = document.getElementById('member-search').value.toLowerCase();
+    document.querySelectorAll('#member-table-body tr').forEach(row => {
+      row.style.display = row.textContent.toLowerCase().includes(q) ? '' : 'none';
+    });
+  }
+</script>
+</body>
+</html>
